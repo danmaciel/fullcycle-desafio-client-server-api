@@ -2,6 +2,6 @@
 
 
 como executar?
-  -- cada sistema está em um diretório diferente, será necessário entrar em um de cada vez e rodar:
+  `` cada sistema está em um diretório diferente, será necessário entrar em um de cada vez e rodar:
     ## go run server.go
     ## go run client.go
