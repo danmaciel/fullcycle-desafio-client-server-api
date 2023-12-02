@@ -10,7 +10,7 @@ import (
 
 	"github.com/danmaciel/client-server-api/helper"
 	"github.com/danmaciel/client-server-api/model"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // nos testes tive que colocar pra 600ms, pois o timeout estava estourando
@@ -22,12 +22,14 @@ func main() {
 
 	initDb()
 
+	log.Println("Server escutando em localhost:8080")
 	http.HandleFunc("/cotacao", handler)
 	http.ListenAndServe(":8080", nil)
+
 }
 
 func handler(res http.ResponseWriter, req *http.Request) {
-	//ctx := req.Context()
+
 	log.Println("Request iniciada")
 	defer log.Println("Request finalizada")
 
@@ -69,25 +71,12 @@ func apiResponse(res http.ResponseWriter, result string) {
 	res.Write(re)
 }
 
-func initDb() {
-	database := getDb()
+func getDb() *sql.DB {
 
-	defer database.Close()
-
-	err := createTable(database)
+	db, err := sql.Open("sqlite3", "./goexpert.db")
 
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	log.Print("Criou o banco")
-}
-
-func getDb() *sql.DB {
-	db, err := sql.Open("mysql", "root:root@tcp(localhost:3306)/goexpert")
-
-	if err != nil {
-		panic(err)
 	}
 
 	return db
@@ -100,7 +89,7 @@ func insertBidInDb(db *sql.DB, value string) error {
 	stmt, err := db.Prepare("Insert into cotacao (bid) values(?)")
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	defer stmt.Close()
@@ -109,9 +98,15 @@ func insertBidInDb(db *sql.DB, value string) error {
 	return err
 }
 
-func createTable(db *sql.DB) error {
-	sql := "create table if not exists cotacao(bid varchar(10))"
-	_, err := db.Query(sql)
+func initDb() {
+	database := getDb()
+	ctx, cancelFunc := helper.GetCtxWithTimout(timeoutForDatabaseIsertation)
 
-	return err
+	defer cancelFunc()
+	defer database.Close()
+
+	_, err := database.ExecContext(ctx, "create table if not exists cotacao(bid varchar(10))")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
